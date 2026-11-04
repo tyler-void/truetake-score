@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "truetake-score"
+version = "0.1.0"
+description = "A score for truetake films: music and event sounds computed from the film's own cue list."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Tyler (@tyler-void)" }]
+requires-python = ">=3.10"
+keywords = ["truetake", "music", "sound-design", "sonification", "demo-video"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Environment :: Console",
+  "Topic :: Multimedia :: Sound/Audio :: Sound Synthesis",
+]
+dependencies = [
+  "numpy>=1.24",
+  "soundfile>=0.12",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+truetake-score = "truetake_score.cli:main"
+
+[project.urls]
+Repository = "https://github.com/tyler-void/truetake-score"
+
+[tool.hatch.build.targets.wheel]
+packages = ["truetake_score"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
