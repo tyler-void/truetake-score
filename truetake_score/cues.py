@@ -14,7 +14,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-KINDS = ("line", "command", "message", "mcp_call", "mcp_return", "score")
+KINDS = ("line", "command", "message", "mcp_call", "mcp_return", "score", "accent")
 MODES = {"major": (0, 2, 4, 5, 7, 9, 11), "minor": (0, 2, 3, 5, 7, 8, 10)}
 PITCH = {"C": 0, "C#": 1, "Db": 1, "D": 2, "D#": 3, "Eb": 3, "E": 4, "F": 5, "F#": 6, "Gb": 6, "G": 7, "G#": 8,
          "Ab": 8, "A": 9, "A#": 10, "Bb": 10, "B": 11}
@@ -38,6 +38,14 @@ class Camera:
     zoom: float
 
 
+@dataclass(frozen=True)
+class Section:
+    """A stretch of the film with one musical mood: a chord progression (scale degrees, 0 = tonic) and an intensity."""
+    t: float
+    progression: tuple[int, ...]
+    intensity: float
+
+
 @dataclass
 class Cues:
     duration: float
@@ -47,6 +55,8 @@ class Cues:
     camera_spring_w: float = 1.5
     events: list[Event] = field(default_factory=list)
     camera: list[Camera] = field(default_factory=list)
+    tempo: float = 72.0
+    sections: list[Section] = field(default_factory=list)
 
 
 def _unit(v, where: str) -> float:
@@ -83,6 +93,18 @@ def parse(raw: dict) -> Cues:
         raise CueError("events must be in time order")
     for i, c in enumerate(raw.get("camera") or []):
         cues.camera.append(Camera(t=float(c["t"]), zoom=float(c["zoom"])))
+    cues.tempo = float(raw.get("tempo", 72))
+    if not 40 <= cues.tempo <= 160:
+        raise CueError("`tempo` is between 40 and 160 BPM")
+    for i, sec in enumerate(raw.get("sections") or []):
+        where = f"sections[{i}]"
+        prog = tuple(int(d) for d in sec.get("progression") or [0])
+        if any(not 0 <= d <= 6 for d in prog):
+            raise CueError(f"{where}: progression is scale degrees 0..6 (0 = the tonic chord)")
+        cues.sections.append(Section(t=float(sec["t"]), progression=prog,
+                                     intensity=_unit(sec.get("intensity", 0.5), f"{where}.intensity")))
+    if [s.t for s in cues.sections] != sorted(s.t for s in cues.sections):
+        raise CueError("sections must be in time order")
     return cues
 
 

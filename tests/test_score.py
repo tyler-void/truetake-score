@@ -54,3 +54,50 @@ def test_pitches_follow_the_key():
 def test_bad_cues_are_refused(raw, match):
     with pytest.raises(cuesmod.CueError, match=match):
         cuesmod.parse(raw)
+
+
+def arranged(**kw):
+    raw = {"version": 1, "duration": 12.0, "key": "D major", "tempo": 72,
+           "sections": [{"t": 0, "progression": [0, 5], "intensity": 0.2},
+                        {"t": 6.0, "progression": [3, 4], "intensity": 0.8}]}
+    raw.update(kw)
+    return cuesmod.parse(raw)
+
+
+def test_arranged_is_deterministic_and_the_film_length():
+    from truetake_score.arrange import arrange
+
+    c = arranged()
+    x = arrange(c)
+    assert len(x) == int(12.0 * SR)
+    assert sample_hash(x) == sample_hash(arrange(c))
+
+
+def test_arranged_piano_rests_in_quiet_sections_and_plays_in_loud_ones():
+    from truetake_score.arrange import arrange
+
+    stems = {}
+    arrange(arranged(), stems=stems)
+    piano = np.abs(stems["piano"]).max(axis=1)
+    assert piano[: int(5.5 * SR)].max() == 0.0  # intensity 0.2: below 0.3 the piano rests
+    assert piano[int(6.0 * SR): int(9.0 * SR)].max() > 1e-3  # intensity 0.8: it plays
+
+
+def test_arranged_accents_only_on_accent_events():
+    from truetake_score.arrange import arrange
+
+    quiet, loud = {}, {}
+    arrange(arranged(events=[{"t": 3.0, "kind": "line"}]), stems=quiet)
+    arrange(arranged(events=[{"t": 3.0, "kind": "accent", "intensity": 1.0}]), stems=loud)
+    assert not quiet["accents"].any()
+    assert np.abs(loud["accents"][int(3.0 * SR): int(3.1 * SR)]).max() > 1e-3
+
+
+@pytest.mark.parametrize("bad, match", [
+    ({"tempo": 300}, "tempo"),
+    ({"sections": [{"t": 0, "progression": [9]}]}, "scale degrees"),
+    ({"sections": [{"t": 5, "progression": [0]}, {"t": 1, "progression": [0]}]}, "time order"),
+])
+def test_arranged_refuses_bad_sections(bad, match):
+    with pytest.raises(cuesmod.CueError, match=match):
+        arranged(**bad)

@@ -21,11 +21,28 @@ The rules are the film's rules:
   impulse response) comes from the seed. The CLI prints a hash of the samples to compare renders.
 - **No noise on its own.** Noise is used only inside the reverb.
 
+## Two styles
+
+- `--style events` (the default): the layers above, one small sound per visible event. Suits a film whose
+  rhythm is its events, like an agent's terminal.
+- `--style arranged`: a composed cue. The cue list cuts the film into `sections`, each with a chord progression
+  in scale degrees and an intensity, and the arranger plays them like a small ensemble scoring a documentary: a
+  string-like bed holding each chord, a soft bass on each change, a piano-like arpeggio in eighth notes that rests
+  below intensity 0.3 and doubles at the octave above 0.7, and a bell only on `accent` events. Chords change every
+  bar at the cue list's `tempo`, restarting at each section, so the harmony moves when the film moves.
+
+```json
+{"version": 1, "duration": 165.0, "key": "D major", "tempo": 72,
+ "sections": [{"t": 0.0, "progression": [0, 5, 3, 4], "intensity": 0.25},
+              {"t": 120.5, "progression": [3, 4, 0, 0], "intensity": 0.9}],
+ "events": [{"t": 126.5, "kind": "accent", "intensity": 1.0}]}
+```
+
 ## Use
 
 ```bash
 uv venv && uv pip install -e .
-truetake-score render cues.json -o score.wav             # 48 kHz float stereo
+truetake-score render cues.json -o score.wav             # 48 kHz float stereo, --style events
 truetake-score render cues.json -o score.wav --stems stems/   # plus one WAV per layer
 ```
 

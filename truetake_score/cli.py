@@ -1,4 +1,4 @@
-"""truetake-score render cues.json -o score.wav [--stems DIR] [--seed N]"""
+"""truetake-score render cues.json -o score.wav [--style events|arranged] [--stems DIR] [--seed N]"""
 from __future__ import annotations
 
 import argparse
@@ -21,7 +21,12 @@ def sample_hash(x: np.ndarray) -> str:
 def cmd_render(args) -> int:
     c = cuesmod.load(args.cues)
     stems: dict = {} if args.stems else None
-    x = score(c, seed=args.seed, stems=stems)
+    if args.style == "arranged":
+        from .arrange import arrange
+
+        x = arrange(c, seed=args.seed, stems=stems)
+    else:
+        x = score(c, seed=args.seed, stems=stems)
     out = Path(args.output)
     sf.write(out, x.astype(np.float32), SR, subtype="FLOAT")
     if stems:
@@ -41,6 +46,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("-o", "--output", default="score.wav")
     r.add_argument("--stems", help="also write each layer to this directory")
     r.add_argument("--seed", type=int, default=7)
+    r.add_argument("--style", choices=["events", "arranged"], default="events",
+                   help="events: a pad and one sound per visible event; arranged: a composed cue in sections")
     r.set_defaults(fn=cmd_render)
     args = p.parse_args(argv)
     try:
